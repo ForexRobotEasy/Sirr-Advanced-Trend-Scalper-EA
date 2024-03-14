@@ -1,0 +1,101 @@
+
+//+------------------------------------------------------------------+
+//|                                             Sirr Advanced Trend Scalper EA                                     |
+//|                                       Developer's site: forexroboteasy.com                         |
+//|                                      Developer: Forex Robot Easy Team                                              |
+//+------------------------------------------------------------------+
+
+// Include necessary libraries
+#include <Trade\Trade.mqh>
+#include <Indicators\Stochastic.mqh>
+#include <Indicators\RSI.mqh>
+#include <Indicators\MACD.mqh>
+
+// Define constants
+#define PRICE_RANGE 50           // Specific price range
+#define MAX_LOSS_PERCENT 10      // Maximum loss percentage for wrong trades
+#define TARGET_PRICE_FLUCT 5     // Target price fluctuation in pips
+#define HIGH_SPREAD_THRESHOLD 10 // High spread threshold in pips
+
+// Create instances of necessary objects
+CTrade trade;
+CStochastic stochastic;
+CRSI rsi;
+CMACD macd;
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    // Initialize indicators
+    stochastic.Init(Symbol(), PERIOD_CURRENT);
+    rsi.Init(Symbol(), PERIOD_CURRENT);
+    macd.Init(Symbol(), PERIOD_CURRENT);
+
+    return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+    // Check if spread is within acceptable range
+    if (SymbolInfoDouble(Symbol(), SYMBOL_SPREAD) > HIGH_SPREAD_THRESHOLD)
+    {
+        return;
+    }
+
+    // Check if current price is within the specified range
+    double currentPrice = SymbolInfoDouble(Symbol(), SYMBOL_BID);
+    double priceRangeMin = currentPrice - PRICE_RANGE / 2;
+    double priceRangeMax = currentPrice + PRICE_RANGE / 2;
+
+    if (currentPrice < priceRangeMin || currentPrice > priceRangeMax)
+    {
+        return;
+    }
+
+    // Calculate indicator values
+    double stochasticValue = stochastic.GetValue();
+    double rsiValue = rsi.GetValue();
+    double macdValue = macd.GetValue();
+
+    // Check if conditions for opening a new order are met
+    if (stochasticValue > 80 && rsiValue > 70 && macdValue > 0)
+    {
+        // Check if target price, spread, and fluctuations are favorable
+        double targetPrice = currentPrice + TARGET_PRICE_FLUCT * Point();
+        double spread = SymbolInfoDouble(Symbol(), SYMBOL_SPREAD);
+
+        if (targetPrice - currentPrice >= spread)
+        {
+            // Place buy order
+            trade.Buy(0.1, Symbol(), targetPrice, 0, 0, 0, 'Sirr Advanced Trend Scalper EA');
+        }
+    }
+    else if (stochasticValue < 20 && rsiValue < 30 && macdValue < 0)
+    {
+        // Check if target price, spread, and fluctuations are favorable
+        double targetPrice = currentPrice - TARGET_PRICE_FLUCT * Point();
+        double spread = SymbolInfoDouble(Symbol(), SYMBOL_SPREAD);
+
+        if (currentPrice - targetPrice >= spread)
+        {
+            // Place sell order
+            trade.Sell(0.1, Symbol(), targetPrice, 0, 0, 0, 'Sirr Advanced Trend Scalper EA');
+        }
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+    // Cleanup
+    stochastic.Deinit();
+    rsi.Deinit();
+    macd.Deinit();
+}
